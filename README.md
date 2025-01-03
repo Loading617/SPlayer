@@ -1,2 +1,2 @@
 # JPlayer
-Windows Music Player written in Java
+A Windows Music Player
