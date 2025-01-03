@@ -1,2 +1,2 @@
-# JPlayer
+# CPlayer
 A Windows Music Player
