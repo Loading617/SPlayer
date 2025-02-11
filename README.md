@@ -1,2 +1,2 @@
-# CPlayer
+# SPlayer
 A Windows Music Player
