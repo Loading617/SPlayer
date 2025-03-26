@@ -1,2 +1,2 @@
 # SPlayer
-A Windows Music Player
+New Edition Windows Music Player
