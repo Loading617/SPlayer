@@ -95,3 +95,26 @@ fn pause_audio(audio_state: &UseRef<AudioState>) {
     let mut sink = sink.lock().unwrap();
     sink.pause();
 }
+
+fn next_track(audio_state: &UseRef<AudioState>) {
+    let mut index = audio_state.write().current_index.lock().unwrap();
+    let playlist = audio_state.read().playlist.lock().unwrap();
+
+    if let Some(i) = *index {
+        if i + 1 < playlist.len() {
+            *index = Some(i + 1);
+            play_audio(audio_state);
+        }
+    }
+}
+
+fn previous_track(audio_state: &UseRef<AudioState>) {
+    let mut index = audio_state.write().current_index.lock().unwrap();
+
+    if let Some(i) = *index {
+        if i > 0 {
+            *index = Some(i - 1);
+            play_audio(audio_state);
+        }
+    }
+}
