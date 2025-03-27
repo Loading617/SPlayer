@@ -4,6 +4,10 @@ use std::fs::File;
 use std::io::BufReader;
 use std::sync::{Arc, Mutex};
 use rfd::FileDialog;
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use std::thread;
+use dioxus_desktop_hooks::use_window_event;
+use std::path::PathBuf;
 
 fn main() {
     dioxus_desktop::launch(App);
@@ -14,6 +18,8 @@ struct AudioState {
     sink: Arc<Mutex<Sink>>,
     playlist: Arc<Mutex<Vec<String>>>,
     current_index: Arc<Mutex<Option<usize>>>,
+    shuffle: Arc<Mutex<bool>>,
+    repeat: Arc<Mutex<bool>>,
 }
 
 
@@ -24,12 +30,32 @@ fn App(cx: Scope) -> Element {
         AudioState {
             sink: Arc::new(Mutex::new(sink)),
             current_track: Arc::new(Mutex::new(None)),
+            div {
+                canvas {
+                    id: "Grut",
+                    width: "600",
+                    height: "200",
+                }
+            }
+            use_window_event(cx, move |event: dioxus_desktop_hooks::FileDropEvent| {
+                if let dioxus_desktop_hooks::FileDropEvent::Dropped(files) = event {
+                    let mut playlist = audio_state.write().playlist.lock().unwrap();
+                    for file in files {
+                        let path = file.to_string_lossy().to_string();
+                        if path.ends_with(".mp3") || path.ends_with(".wav") || path.ends_with(".flac") {
+                            playlist.push(path);
+                        }
+                    }
+                }
+            });
         }
     });
+
 
     cx.render(rsx! {
         div {
             h1 { "SPlayer" }
+            p { "Drag and drop files here!" }
             button {
                 onclick: move |_| pick_file(audio_state.clone()),
                 "Pick Music File"
@@ -50,6 +76,14 @@ fn App(cx: Scope) -> Element {
                 onclick: move |_| previous_track(audio_state.clone()),
                 "Previous"
             }
+            button {
+                onclick: move |_| toggle_shuffle(audio_state.clone()),
+                "Shuffle"
+            }
+            button {
+                onclick: move |_| toggle_repeat(audio_state.clone()),
+                "Repeat"
+            }            
             p { "Now Playing: ", audio_state.read().current_track.lock().unwrap().as_deref().unwrap_or("None") }
         }
     })
@@ -116,5 +150,31 @@ fn previous_track(audio_state: &UseRef<AudioState>) {
             *index = Some(i - 1);
             play_audio(audio_state);
         }
+    }
+}
+
+fn start_visualizer() {
+    thread::spawn(|| {
+        let host = cpal::default_host();
+        let device = host.default_input_device().unwrap();
+        let config = device.default_input_config().unwrap();
+        let stream = device.build_input_stream(
+            &config.into(),
+            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                draw_waveform(data);
+            },
+            move |err| eprintln!("Stream error: {}", err),
+        ).unwrap();
+        stream.play().unwrap();
+    });
+}
+
+fn draw_waveform(samples: &[f32]) {
+    use std::fs::File;
+    use std::io::Write;
+    
+    let mut file = File::create("waveform.txt").unwrap();
+    for &sample in samples {
+        writeln!(file, "{}", sample).unwrap();
     }
 }
