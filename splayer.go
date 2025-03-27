@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"image/color"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/font/gofont"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/dhowden/tag"
@@ -30,11 +33,12 @@ type Track struct {
 }
 
 var (
-	playButton   widget.Clickable
-	nextButton   widget.Clickable
-	prevButton   widget.Clickable
-	playlist     []Track
-	currentTrack int
+	playButton    widget.Clickable
+	nextButton    widget.Clickable
+	prevButton    widget.Clickable
+	playlist      []Track
+	currentTrack  int
+	randParticles [100]layout.FlexChild
 )
 
 func main() {
@@ -54,6 +58,7 @@ func loop(w *app.Window) error {
 	var ops op.Ops
 
 	loadPlaylist("music/")
+	generateParticles()
 
 	for {
 		e := <-w.Events()
@@ -72,6 +77,7 @@ func loop(w *app.Window) error {
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					return material.Button(th, &nextButton, "Next").Layout(gtx)
 				}),
+				layout.Rigid(renderVisualizer(gtx)),
 			)
 
 			if playButton.Clicked() {
@@ -130,4 +136,27 @@ func playAudio(filePath string) {
 	<-readyChan
 	player := context.NewPlayer()
 	player.Write(buf.Bytes())
+}
+
+func generateParticles() {
+	rand.Seed(time.Now().UnixNano())
+	for i := range randParticles {
+		randParticles[i] = layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			size := rand.Intn(20) + 5
+			paint.ColorOp{Color: color.NRGBA{
+				R: uint8(rand.Intn(255)),
+				G: uint8(rand.Intn(255)),
+				B: uint8(rand.Intn(255)),
+				A: 255,
+			}}.Add(gtx.Ops)
+			paint.PaintOp{}.Add(gtx.Ops)
+			return layout.Dimensions{Size: gtx.Constraints.Max}
+		})
+	}
+}
+
+func renderVisualizer(gtx layout.Context) layout.Dimensions {
+	return layout.Flex{
+		Axis: layout.Horizontal,
+	}.Layout(gtx, randParticles[:]...)
 }
