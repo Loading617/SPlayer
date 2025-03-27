@@ -42,6 +42,14 @@ fn App(cx: Scope) -> Element {
                 onclick: move |_| pause_audio(audio_state.clone()),
                 "Pause"
             }
+            button {
+                onclick: move |_| next_track(audio_state.clone()),
+                "Next"
+            }
+            button {
+                onclick: move |_| previous_track(audio_state.clone()),
+                "Previous"
+            }
             p { "Now Playing: ", audio_state.read().current_track.lock().unwrap().as_deref().unwrap_or("None") }
         }
     })
