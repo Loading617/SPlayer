@@ -58,17 +58,29 @@ fn pick_file(audio_state: &UseRef<AudioState>) {
 
 
 fn play_audio(audio_state: &UseRef<AudioState>) {
-    if let Some(path) = &*audio_state.read().current_track.lock().unwrap() {
-        let file = File::open(path).unwrap();
-        let source = Decoder::new(BufReader::new(file)).unwrap();
-        let sink = &audio_state.read().sink;
-        let mut sink = sink.lock().unwrap();
-        if sink.empty() {
-            sink.append(source);
-        }
-        sink.play();
+    let playlist = audio_state.read().playlist.lock().unwrap();
+    let mut index = audio_state.write().current_index.lock().unwrap();
+
+    if playlist.is_empty() {
+        return;
     }
+
+    if index.is_none() {
+        *index = Some(0);
+    }
+
+    let current_track = &playlist[index.unwrap()];
+    let file = File::open(current_track).unwrap();
+    let source = Decoder::new(BufReader::new(file)).unwrap();
+    let sink = &audio_state.read().sink;
+    let mut sink = sink.lock().unwrap();
+
+    if sink.empty() {
+        sink.append(source);
+    }
+    sink.play();
 }
+
 
 fn pause_audio(audio_state: &UseRef<AudioState>) {
     let sink = &audio_state.read().sink;
