@@ -1,0 +1,4 @@
+[dependencies]
+dioxus = "0.4"
+dioxus-desktop = "0.4"
+rodio = "0.17"
