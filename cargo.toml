@@ -2,3 +2,5 @@
 dioxus = "0.4"
 dioxus-desktop = "0.4"
 rodio = "0.17"
+rfd = "0.12"
+cpal = "0.15"
