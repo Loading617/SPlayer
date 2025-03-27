@@ -29,7 +29,7 @@ fn App(cx: Scope) -> Element {
 
     cx.render(rsx! {
         div {
-            h1 { "Rust Music Player (Dioxus)" }
+            h1 { "SPlayer" }
             button {
                 onclick: move |_| pick_file(audio_state.clone()),
                 "Pick Music File"
