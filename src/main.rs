@@ -12,8 +12,10 @@ fn main() {
 #[derive(Clone)]
 struct AudioState {
     sink: Arc<Mutex<Sink>>,
-    current_track: Arc<Mutex<Option<String>>>,
+    playlist: Arc<Mutex<Vec<String>>>,
+    current_index: Arc<Mutex<Option<usize>>>,
 }
+
 
 fn App(cx: Scope) -> Element {
     let audio_state = use_ref(cx, || {
@@ -46,10 +48,14 @@ fn App(cx: Scope) -> Element {
 }
 
 fn pick_file(audio_state: &UseRef<AudioState>) {
-    if let Some(path) = FileDialog::new().add_filter("Audio", &["mp3", "wav", "flac"]).pick_file() {
-        *audio_state.write().current_track.lock().unwrap() = Some(path.to_string_lossy().to_string());
+    if let Some(paths) = FileDialog::new().add_filter("Audio", &["mp3", "wav", "flac"]).pick_files() {
+        let mut playlist = audio_state.write().playlist.lock().unwrap();
+        for path in paths {
+            playlist.push(path.to_string_lossy().to_string());
+        }
     }
 }
+
 
 fn play_audio(audio_state: &UseRef<AudioState>) {
     if let Some(path) = &*audio_state.read().current_track.lock().unwrap() {
