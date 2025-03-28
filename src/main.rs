@@ -8,6 +8,9 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::thread;
 use dioxus_desktop_hooks::use_window_event;
 use std::path::PathBuf;
+use rand::seq::SliceRandom;
+use wgpu::{Device, Queue, Surface, SwapChain, SwapChainDescriptor};
+use winit::{event_loop::EventLoop, window::Window};
 
 fn main() {
     dioxus_desktop::launch(App);
@@ -133,14 +136,23 @@ fn pause_audio(audio_state: &UseRef<AudioState>) {
 fn next_track(audio_state: &UseRef<AudioState>) {
     let mut index = audio_state.write().current_index.lock().unwrap();
     let playlist = audio_state.read().playlist.lock().unwrap();
+    let repeat = *audio_state.read().repeat.lock().unwrap();
+
+    if playlist.is_empty() {
+        return;
+    }
 
     if let Some(i) = *index {
         if i + 1 < playlist.len() {
             *index = Some(i + 1);
+        } else if repeat {
+            *index = Some(0);
+        } else {
+            return;
+        }
             play_audio(audio_state);
         }
     }
-}
 
 fn previous_track(audio_state: &UseRef<AudioState>) {
     let mut index = audio_state.write().current_index.lock().unwrap();
@@ -151,6 +163,21 @@ fn previous_track(audio_state: &UseRef<AudioState>) {
             play_audio(audio_state);
         }
     }
+}
+
+fn toggle_shuffle(audio_state: &UseRef<AudioState>) {
+    let mut shuffle = audio_state.write().shuffle.lock().unwrap();
+    *shuffle = !*shuffle;
+
+    if *shuffle {
+        let mut playlist = audio_state.write().playlist.lock().unwrap();
+        playlist.shuffle(&mut rand::thread_rng());
+    }
+}
+
+fn toggle_repeat(audio_state: &UseRef<AudioState>) {
+    let mut repeat = audio_state.write().repeat.lock().unwrap();
+    *repeat = !*repeat;
 }
 
 fn start_visualizer() {
@@ -177,4 +204,22 @@ fn draw_waveform(samples: &[f32]) {
     for &sample in samples {
         writeln!(file, "{}", sample).unwrap();
     }
+}
+
+fn init_visualizer(window: &Window) -> (Device, Queue, Surface, SwapChain) {
+    let instance = wgpu::Instance::new(wgpu::Backends::all());
+    let surface = unsafe { instance.create_surface(window) };
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).unwrap();
+    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(), None)).unwrap();
+    
+    let swap_chain_descriptor = SwapChainDescriptor {
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        width: 600,
+        height: 200,
+        present_mode: wgpu::PresentMode::Fifo,
+    };
+
+    let swap_chain = device.create_swap_chain(&surface, &swap_chain_descriptor);
+    (device, queue, surface, swap_chain)
 }
